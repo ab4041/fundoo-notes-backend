@@ -1,10 +1,14 @@
 package com.fundoonotes.fundoo_notes_backend.service.impl;
 
+import com.fundoonotes.fundoo_notes_backend.dto.request.LoginRequestDto;
 import com.fundoonotes.fundoo_notes_backend.dto.request.UserRegisterRequestDto;
+import com.fundoonotes.fundoo_notes_backend.dto.response.LoginResponseDto;
 import com.fundoonotes.fundoo_notes_backend.entity.User;
 import com.fundoonotes.fundoo_notes_backend.repository.UserRepository;
 import com.fundoonotes.fundoo_notes_backend.service.UserService;
+import com.fundoonotes.fundoo_notes_backend.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,6 +17,10 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
+    private final PasswordEncoder passwordEncoder;
+
+    private final JwtUtil jwtUtil;
+
     @Override
     public String register(UserRegisterRequestDto dto) {
 
@@ -20,10 +28,35 @@ public class UserServiceImpl implements UserService {
 
         user.setFirstName(dto.getFirstName());
         user.setEmail(dto.getEmail());
-        user.setPassword(dto.getPassword());
+        user.setPassword(
+                passwordEncoder.encode(dto.getPassword())
+        );
 
         userRepository.save(user);
 
         return "User registered successfully";
+    }
+
+    @Override
+    public LoginResponseDto login(LoginRequestDto dto) {
+
+        User user = userRepository
+                .findByEmail(dto.getEmail())
+                .orElseThrow();
+
+        if (!passwordEncoder.matches(
+                dto.getPassword(),
+                user.getPassword()
+        )) {
+
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        String token = jwtUtil.generateToken(user.getId());
+
+        return new LoginResponseDto(
+                token,
+                "Login successful"
+        );
     }
 }
