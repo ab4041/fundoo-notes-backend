@@ -7,7 +7,9 @@ import com.fundoonotes.fundoo_notes_backend.entity.User;
 import com.fundoonotes.fundoo_notes_backend.repository.UserRepository;
 import com.fundoonotes.fundoo_notes_backend.service.UserService;
 import com.fundoonotes.fundoo_notes_backend.util.JwtUtil;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,8 @@ public class UserServiceImpl implements UserService {
 
     private final JwtUtil jwtUtil;
 
+
+    // REGISTER USER
     @Override
     public String register(UserRegisterRequestDto dto) {
 
@@ -28,6 +32,8 @@ public class UserServiceImpl implements UserService {
 
         user.setFirstName(dto.getFirstName());
         user.setEmail(dto.getEmail());
+
+        // Encrypt password before saving
         user.setPassword(
                 passwordEncoder.encode(dto.getPassword())
         );
@@ -37,13 +43,18 @@ public class UserServiceImpl implements UserService {
         return "User registered successfully";
     }
 
+
+    // LOGIN USER
     @Override
     public LoginResponseDto login(LoginRequestDto dto) {
 
         User user = userRepository
                 .findByEmail(dto.getEmail())
-                .orElseThrow();
+                .orElseThrow(() ->
+                        new RuntimeException("User not found")
+                );
 
+        // Check password match
         if (!passwordEncoder.matches(
                 dto.getPassword(),
                 user.getPassword()
@@ -52,6 +63,7 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Invalid credentials");
         }
 
+        // Generate JWT token
         String token = jwtUtil.generateToken(user.getId());
 
         return new LoginResponseDto(
@@ -59,4 +71,5 @@ public class UserServiceImpl implements UserService {
                 "Login successful"
         );
     }
+
 }
